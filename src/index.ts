@@ -1,61 +1,53 @@
-import { Reshuffle, BaseConnector, EventConfiguration } from 'reshuffle-base-connector'
+import objhash from 'object-hash'
+import {
+  BaseConnector,
+  EventConfiguration,
+  Reshuffle,
+} from 'reshuffle-base-connector'
+import { CorePersistentStore } from "./CorePersistentStore";
+import { CoreEventManager } from "./CoreEventManager";
 
-export interface _CONNECTOR_NAME_ConnectorConfigOptions {
-  var1: string
-  // ...
-}
+export { Reshuffle }
+export { EventConfiguration }
+export { CorePersistentStore }
+export { CoreEventManager }
+export type Options = Record<string, any>
 
-export interface _CONNECTOR_NAME_ConnectorEventOptions {
-  option1?: string
-  // ...
-}
+export type CoreEventFilter = (ec: EventConfiguration) => boolean
+export type CoreEventHandler = (event: Record<string, any>) => void
+export type CoreEventMapper = (ec: EventConfiguration) => any
 
-export default class _CONNECTOR_NAME_Connector extends BaseConnector<
-  _CONNECTOR_NAME_ConnectorConfigOptions,
-  _CONNECTOR_NAME_ConnectorEventOptions
-> {
-  // Your class variables
-  var1: string
+const INTERVAL_DELAY_MS = parseInt(process.env.RESHUFFLE_INTERVAL_DELAY_MS || '30000', 10)
 
-  constructor(app: Reshuffle, options?: _CONNECTOR_NAME_ConnectorConfigOptions, id?: string) {
+export class PollingConnector extends BaseConnector {
+  protected eventManager = new CoreEventManager(this)
+  protected store: CorePersistentStore
+  protected interval?: NodeJS.Timer
+
+  constructor(app: Reshuffle, protected options: Options, id?: string) {
     super(app, options, id)
-    this.var1 = options?.var1 || 'initial value'
-    // ...
+    this.store = new CorePersistentStore(this, options)
   }
 
-  onStart(): void {
-    // If you need to do something specific on start, otherwise remove this function
-  }
-
-  onStop(): void {
-    // If you need to do something specific on stop, otherwise remove this function
-  }
-
-  // Your events
-  on(
-    options: _CONNECTOR_NAME_ConnectorEventOptions,
-    handler: any,
-    eventId: string,
-  ): EventConfiguration {
-    if (!eventId) {
-      eventId = `_CONNECTOR_NAME_/${options.option1}/${this.id}`
+  public onStart(): void {
+    const onInterval = (this as any).onInterval
+    if (typeof onInterval === 'function') {
+      this.interval = setInterval(onInterval.bind(this), INTERVAL_DELAY_MS)
     }
-    const event = new EventConfiguration(eventId, this, options)
-    this.eventConfigurations[event.id] = event
-
-    this.app.when(event, handler)
-
-    return event
   }
 
-  // Your actions
-  action1(bar: string): void {
-    // Your implementation here
+  public onStop(): void {
+    if (this.interval) {
+      clearInterval(this.interval)
+      this.interval = undefined
+    }
   }
 
-  action2(foo: string): void {
-    // Your implementation here
+  public onRemoveEvent(event: EventConfiguration): void {
+    this.eventManager.removeEvent(event)
+  }
+
+  public async onInterval(): Promise<void> {
+    // implement polling logic here
   }
 }
-
-export { _CONNECTOR_NAME_Connector }

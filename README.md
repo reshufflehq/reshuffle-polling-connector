@@ -1,52 +1,57 @@
-## BEGIN - TO DELETE TILL END
+# reshuffle-polling-connector
 
-THIS IS A TEMPLATE REPO FOR NEW RESHUFFLE CONNECTORS
-1. Create a new connector repo from this template using this link https://github.com/reshufflehq/reshuffle-template-connector/generate
-2. Clone the repo locally
-3. Rename all occurrences of _CONNECTOR_NAME_
-4. `npm install`
-5. `npm run build:watch`
-6. Implement your events/actions in `src/index.ts`
-7. `npm run lint`
-8. Push your code
-9. Go to https://app.circleci.com/projects/project-dashboard/github/reshufflehq/
-    a. You should see your new connector repo
-    b. click on `Set Up Project` for the repo
-    c. click on `Use Existing Config`
-    d. click on `Start Building`
+### Reshuffle Polling Connector
 
-10. If circle CI checks are all green, you are all set!
+This connector allows polling an external service periodically, and potentially firing events based on the results of the polling action.
 
-// Keep documentation template below
+A good use-case for a polling connector is for systems that do not provide a push (e.g. webhook) mechanism. In such systems, you'll need to poll periodically to capture changes and operate upon them.
 
-## END
 
-# reshuffle-_CONNECTOR_NAME_-connector
+For example - you can use the polling connector to sample an S3 bucket for changes in its file list, and fire a relevant event using `on`when a file is added or deleted.
 
-### Reshuffle _CONNECTOR_NAME_ Connector
-
-This connector provides <description>.
-
+Normally, the connector will need to compare current and previous state of external data. This package provides a simple persistent store to allow for that.
 #### Configuration Options:
-```typescript
-interface _CONNECTOR_NAME_ConnectorConfigOptions {
-  foo: string // foo description
-  bar?: number // bar description
+
+The only configuration this connector exposes is the polling interval.
+
+`RESHUFFLE_INTERVAL_DELAY_MS` (defaults to 30000)
+
+To define a polling interval set the `RESHUFFLE_INTERVAL_DELAY_MS` environment variable (in milliseconds).
+The connector will fire its `onInterval()` function at `RESHUFFLE_INTERVAL_DELAY_MS` intervals.
+
+
+## Get started
+To implement a new polling connector, create a new class extending the `PollingConnector` class from this package.
+
+Example:
+```js
+import { PollingConnector } from 'reshuffle-polling-connector'
+
+class MyCustomPollingConnector extends PollingConnector<MyConnectorConfigOptions, MyConnectorEventOptions> {
+    
+  constructor(app, options, id /* your custom options */) {
+    super(app, options, id)
+    // ...
+  }
+  
+  async onInterval(): Promise<void> {
+    // Implement custom polling logic
+  }
+
+  // Functions below belong to Reshuffle Base Connector which the Polling connector extends
+  // See https://github.com/reshufflehq/reshuffle-base-connector
+  
+  onStart() {
+    // ...
+  }
+
+  onStop() {
+    // ...
+  }
+
+  on(options: EventOptionsType, eventId: EventConfiguration['id']): EventConfiguration {
+    // ...
+  }
+
 }
 ```
-
-#### Connector events
-
-##### event1 description
-The connector fires this event when ...
-
-##### event2 description
-The connector fires this event when ...
-
-#### Connector actions
-
-##### action1
-The connector provides action1 which ...
-
-##### action2
-The connector provides action2 which ...
